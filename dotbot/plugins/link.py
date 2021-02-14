@@ -144,10 +144,14 @@ class Link(dotbot.Plugin):
             if "[WinError 4390] The file or directory is not a reparse point" in str(e) and \
                 os.path.isdir(path):
                 return "UNLINKED_DIR"
-
-        if read_link.startswith("\\\\?\\"):
-            read_link = read_link.replace("\\\\?\\", "")
-        return read_link
+            return "OSERROR_READING_LINK"
+        except Exception as e:
+            print(e)
+            return 'GENERAL_EXCEPTION_READING_LINK'
+        else:
+            if read_link.startswith("\\\\?\\"):
+                read_link = read_link.replace("\\\\?\\", "")
+            return read_link
 
     def _exists(self, path):
         '''
