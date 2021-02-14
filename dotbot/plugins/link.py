@@ -192,51 +192,54 @@ class Link(dotbot.Plugin):
         destination_dir = os.path.dirname(destination)
         return os.path.relpath(source, destination_dir)
 
-    def _link(self, source, link_name, relative, canonical_path, ignore_missing):
+    def _link(self, dotfile_source, target_path_to_link_at, relative, canonical_path, ignore_missing):
         '''
         Links link_name to source.
 
         Returns true if successfully linked files.
         '''
         success = False
-        destination = os.path.normpath(os.path.expanduser(link_name))
+
+        target_path_to_link_at = os.path.normpath(target_path_to_link_at)
+
+        destination = os.path.normpath(os.path.expanduser(target_path_to_link_at))
         base_directory = self._context.base_directory(canonical_path=canonical_path)
-        absolute_source = os.path.normpath(os.path.join(base_directory, source))
+        absolute_source = os.path.normpath(os.path.join(base_directory, dotfile_source))
         if relative:
-            source = self._relative_path(absolute_source, destination)
+            dotfile_source = self._relative_path(absolute_source, destination)
         else:
-            source = absolute_source
-        if (not self._exists(link_name) and self._is_link(link_name) and
-                self._link_destination(link_name) != source):
+            dotfile_source = absolute_source
+        if (not self._exists(target_path_to_link_at) and self._is_link(target_path_to_link_at) and
+                self._link_destination(target_path_to_link_at) != dotfile_source):
             self._log.warning('Invalid link %s -> %s' %
-                (link_name, self._link_destination(link_name)))
+                              (target_path_to_link_at, self._link_destination(target_path_to_link_at)))
         # we need to use absolute_source below because our cwd is the dotfiles
         # directory, and if source is relative, it will be relative to the
         # destination directory
-        elif not self._exists(link_name) and (ignore_missing or self._exists(absolute_source)):
+        elif not self._exists(target_path_to_link_at) and (ignore_missing or self._exists(absolute_source)):
             try:
-                os.symlink(source, destination)
+                os.symlink(dotfile_source, destination)
             except OSError:
-                self._log.warning('Linking failed %s -> %s' % (link_name, source))
+                self._log.warning('Linking failed %s -> %s' % (target_path_to_link_at, dotfile_source))
             else:
-                self._log.lowinfo('Creating link %s -> %s' % (link_name, source))
+                self._log.lowinfo('Creating link %s -> %s' % (target_path_to_link_at, dotfile_source))
                 success = True
-        elif self._exists(link_name) and not self._is_link(link_name):
+        elif self._exists(target_path_to_link_at) and not self._is_link(target_path_to_link_at):
             self._log.warning(
                 '%s already exists but is a regular file or directory' %
-                link_name)
-        elif self._is_link(link_name) and self._link_destination(link_name) != source:
+                target_path_to_link_at)
+        elif self._is_link(target_path_to_link_at) and self._link_destination(target_path_to_link_at) != dotfile_source:
             self._log.warning('Incorrect link %s -> %s' %
-                (link_name, self._link_destination(link_name)))
+                              (target_path_to_link_at, self._link_destination(target_path_to_link_at)))
         # again, we use absolute_source to check for existence
         elif not self._exists(absolute_source):
-            if self._is_link(link_name):
+            if self._is_link(target_path_to_link_at):
                 self._log.warning('Nonexistent source %s -> %s' %
-                    (link_name, source))
+                                  (target_path_to_link_at, dotfile_source))
             else:
                 self._log.warning('Nonexistent source for %s : %s' %
-                    (link_name, source))
+                                  (target_path_to_link_at, dotfile_source))
         else:
-            self._log.lowinfo('Link exists %s -> %s' % (link_name, source))
+            self._log.lowinfo('Link exists %s -> %s' % (target_path_to_link_at, dotfile_source))
             success = True
         return success
