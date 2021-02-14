@@ -22,6 +22,7 @@ class Link(dotbot.Plugin):
         return self._process_links(data)
 
     def _process_links(self, links):
+        # print("symlinking\n\t", links)
         success = True
         defaults = self._context.defaults().get('link', {})
         for destination, source in links.items():
@@ -131,7 +132,7 @@ class Link(dotbot.Plugin):
         '''
         Returns the destination of the symbolic link.
         '''
-        path = os.path.expanduser(path)
+        path = os.path.normpath(os.path.expanduser(path))
         return os.readlink(path)
 
     def _exists(self, path):
@@ -198,9 +199,9 @@ class Link(dotbot.Plugin):
         Returns true if successfully linked files.
         '''
         success = False
-        destination = os.path.expanduser(link_name)
+        destination = os.path.normpath(os.path.expanduser(link_name))
         base_directory = self._context.base_directory(canonical_path=canonical_path)
-        absolute_source = os.path.join(base_directory, source)
+        absolute_source = os.path.normpath(os.path.join(base_directory, source))
         if relative:
             source = self._relative_path(absolute_source, destination)
         else:
