@@ -175,8 +175,11 @@ class Link(dotbot.Plugin):
             ) and os.path.isdir(path):
                 return "UNLINKED_DIR"
             else:
-                raise e
-
+                print(e)
+                return "OS_ERROR_ON_READLINK"
+        except Exception as e:
+            print(e)
+            return "EXCEPTION_ON_READLINK"
         if read_link.startswith("\\\\?\\"):
             read_link = read_link.replace("\\\\?\\", "")
         return read_link
@@ -333,5 +336,5 @@ class Link(dotbot.Plugin):
                 self._log.warning(
                     "%s already exists but is a regular file or directory" % target_path_to_link_at
                 )
-                
+
         return success_flag
