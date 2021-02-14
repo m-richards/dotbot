@@ -7,6 +7,7 @@
 # is useful because we don't know the name of the python binary.
 
 ''':' # begin python string; this line is interpreted by the shell as `:`
+echo "python  >/dev/null" "$0" "$@"
 command -v python  >/dev/null 2>&1 && exec python  "$0" "$@"
 command -v python3 >/dev/null 2>&1 && exec python3 "$0" "$@"
 command -v python2 >/dev/null 2>&1 && exec python2 "$0" "$@"
