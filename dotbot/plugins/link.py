@@ -41,18 +41,11 @@ class Link(dotbot.Plugin):
         (relative_default, canonical_path_default, force_flag_default, relink_flag_default,
          create_dir_flag_default, use_glob_default, shell_command_default, ignore_missing_default) = self._get_default_flags()
 
-        # defaults = self._context.defaults().get("link", {})
         for destination, source_dict in links_dict.items():
             destination = os.path.expandvars(destination)
-            # relative = defaults.get("relative", False)
-            # canonical_path = defaults.get("canonicalize-path", True)
-            # force_flag = defaults.get("force", False)
-            # relink_flag = defaults.get("relink", False)
-            # create_dir_flag = defaults.get("create", False)
-            # use_glob = defaults.get("glob", False)
-            # shell_command = defaults.get("if", None)
-            # ignore_missing = defaults.get("ignore-missing", False)
+
             if isinstance(source_dict, dict):
+                path = self._default_source(destination, source_dict.get("path"))
                 # extended config
                 shell_command = source_dict.get("if", shell_command_default)
                 relative = source_dict.get("relative", relative_default)
@@ -62,9 +55,10 @@ class Link(dotbot.Plugin):
                 create_dir_flag = source_dict.get("create", create_dir_flag_default)
                 use_glob = source_dict.get("glob", use_glob_default)
                 ignore_missing = source_dict.get("ignore-missing", ignore_missing_default)
-                path = self._default_source(destination, source_dict.get("path"))
+
             else:
                 path = self._default_source(destination, source_dict)
+
                 (shell_command, relative, canonical_path, force_flag, relink_flag,
                 create_dir_flag, use_glob, ignore_missing) = (shell_command_default, relative_default, canonical_path_default, force_flag_default, relink_flag_default,
                 create_dir_flag_default, use_glob_default, ignore_missing_default)
@@ -91,7 +85,7 @@ class Link(dotbot.Plugin):
                 elif glob_star_loc == -1 and len(glob_results) == 1:
                     # perform a normal link operation
                     if create_dir_flag:
-                        success &= self._create(destination)
+                        success &= self._create_dir(destination)
                     if force_flag or relink_flag:
                         success &= self._delete(path, destination, relative, canonical_path, force_flag)
                     success &= self._link(path, destination, relative, canonical_path, ignore_missing)
@@ -102,7 +96,7 @@ class Link(dotbot.Plugin):
                         glob_item = glob_full_item[len(glob_base) :]
                         glob_link_destination = os.path.join(destination, glob_item)
                         if create_dir_flag:
-                            success &= self._create(glob_link_destination)
+                            success &= self._create_dir(glob_link_destination)
                         if force_flag or relink_flag:
                             success &= self._delete(
                                 glob_full_item, glob_link_destination, relative, canonical_path, force_flag
@@ -112,7 +106,7 @@ class Link(dotbot.Plugin):
                         )
             else:
                 if create_dir_flag:
-                    success &= self._create(destination)
+                    success &= self._create_dir(destination)
                 if not ignore_missing and not self._exists(os.path.join(self._context.base_directory(), path)):
                     # we seemingly check this twice (here and in _link) because
                     # if the file doesn't exist and force is True, we don't
@@ -152,7 +146,7 @@ class Link(dotbot.Plugin):
         """
         return os.path.islink(os.path.expanduser(path))
 
-    def _link_destination(self, path):
+    def _get_link_destination(self, path):
         """
         Returns the destination of the symbolic link. Truncates the  \\?\ start to a path if it
         is present. This is an identifier which allows >255 character file name links to work.
@@ -183,7 +177,8 @@ class Link(dotbot.Plugin):
         path = os.path.expanduser(path)
         return os.path.exists(path)
 
-    def _create(self, path):
+    def _create_dir(self, path):
+        """Create all directories in path if they do not already exist."""
         success = True
         parent = os.path.abspath(os.path.join(os.path.expanduser(path), os.pardir))
         if not self._exists(parent):
@@ -203,7 +198,7 @@ class Link(dotbot.Plugin):
         fullpath = os.path.expanduser(path)
         if relative:
             source = self._relative_path(source, fullpath)
-        if (self._is_link(path) and self._link_destination(path) != source) or (
+        if (self._is_link(path) and self._get_link_destination(path) != source) or (
             self._exists(path) and not self._is_link(path)
         ):
             removed = False
@@ -234,7 +229,7 @@ class Link(dotbot.Plugin):
         destination_dir = os.path.dirname(destination)
         return os.path.relpath(source, destination_dir)
 
-    def _link(self, dotfile_source, target_path_to_link_at, relative, canonical_path, ignore_missing):
+    def _link(self, dotfile_source, target_path_to_link_at, relative_path, canonical_path, ignore_missing):
         """
         Links link_name to source.
         :param target_path_to_link_at is the file path where we are putting a symlink back to
@@ -242,18 +237,18 @@ class Link(dotbot.Plugin):
 
         Returns true if successfully linked files.
         """
-        success = False
+        success_flag = False
         destination = os.path.expanduser(target_path_to_link_at)
         base_directory = self._context.base_directory(canonical_path=canonical_path)
         absolute_source = os.path.join(base_directory, dotfile_source)
-        if relative:
+        if relative_path:
             dotfile_source = self._relative_path(absolute_source, destination)
         else:
             dotfile_source = absolute_source
 
         target_path_exists: bool = self._exists(target_path_to_link_at)
         target_file_is_link: bool = self._is_link(target_path_to_link_at)
-        symlink_dest_at_target_path: str = self._link_destination(target_path_to_link_at)
+        symlink_dest_at_target_path: str = self._get_link_destination(target_path_to_link_at)
         if not target_path_exists and target_file_is_link and symlink_dest_at_target_path != dotfile_source:
             self._log.warning("Invalid link %s -> %s" % (target_path_to_link_at, symlink_dest_at_target_path))
         # we need to use absolute_source below because our cwd is the dotfiles
@@ -271,7 +266,7 @@ class Link(dotbot.Plugin):
                 raise e
             else:
                 self._log.lowinfo("Creating link %s -> %s" % (target_path_to_link_at, dotfile_source))
-                success = True
+                success_flag = True
         elif target_path_exists and not target_file_is_link:
             self._log.warning("%s already exists but is a regular file or directory" % target_path_to_link_at)
         elif target_file_is_link and symlink_dest_at_target_path != dotfile_source:
@@ -284,5 +279,5 @@ class Link(dotbot.Plugin):
                 self._log.warning("Nonexistent source for %s : %s" % (target_path_to_link_at, dotfile_source))
         else:
             self._log.lowinfo("Link exists %s -> %s" % (target_path_to_link_at, dotfile_source))
-            success = True
-        return success
+            success_flag = True
+        return success_flag
