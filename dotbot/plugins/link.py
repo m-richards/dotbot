@@ -278,10 +278,13 @@ class Link(dotbot.Plugin):
                 target_path_to_link_at, dotfile_source))
 
                 return success_flag
+        else:  # target path does already exist
+            if target_file_is_link is False:
+                self._log.warning(
+                    "%s already exists but is a regular file or directory" % target_path_to_link_at)
+                return success_flag
 
-        if target_path_exists and not target_file_is_link:
-            self._log.warning("%s already exists but is a regular file or directory" % target_path_to_link_at)
-        elif target_file_is_link and symlink_dest_at_target_path != dotfile_source:
+        if target_file_is_link and symlink_dest_at_target_path != dotfile_source:
             self._log.warning("Incorrect link %s -> %s" % (target_path_to_link_at, symlink_dest_at_target_path))
         # again, we use absolute_source to check for existence
         elif not self._exists(absolute_source):
