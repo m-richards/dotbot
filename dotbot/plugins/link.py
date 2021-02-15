@@ -253,7 +253,7 @@ class Link(dotbot.Plugin):
         # get the file/ folder the symlink (located at the target path) is pointed to
         symlink_dest_at_target_path: str = self._get_link_destination(target_path_to_link_at)
         if target_path_exists is False:
-            # target path doesn't exist/ contains broken symlink
+            # target path doesn't exist already/ contains broken symlink
             if target_file_is_link and symlink_dest_at_target_path != dotfile_source:
                 self._log.warning("Invalid link %s -> %s" % (target_path_to_link_at, symlink_dest_at_target_path))
             # we need to use absolute_source below because our cwd is the dotfiles
@@ -274,17 +274,13 @@ class Link(dotbot.Plugin):
                     success_flag = True
 
             else:  # temp ugly block
-                if not self._exists(absolute_source):
-                    if target_file_is_link:
-                        self._log.warning("Nonexistent source %s -> %s" % (
-                        target_path_to_link_at, dotfile_source))
-                    else:
-                        self._log.warning("Nonexistent source for %s : %s" % (
-                        target_path_to_link_at, dotfile_source))
+                if target_file_is_link:
+                    self._log.warning("Nonexistent source %s -> %s" % (
+                    target_path_to_link_at, dotfile_source))
                 else:
-                    self._log.lowinfo(
-                        "Link exists %s -> %s" % (target_path_to_link_at, dotfile_source))
-                    success_flag = True
+                    self._log.warning("Nonexistent source for %s : %s" % (
+                    target_path_to_link_at, dotfile_source))
+
                 return success_flag
 
         if target_path_exists and not target_file_is_link:
