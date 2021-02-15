@@ -21,34 +21,34 @@ class Link(dotbot.Plugin):
             raise ValueError("Link cannot handle directive %s" % directive)
         return self._process_links(data)
 
-    def _process_links(self, links):
+    def _process_links(self, links_dict):
         # print("symlinking\n\t", links)
         success = True
         defaults = self._context.defaults().get("link", {})
-        for destination, source in links.items():
+        for destination, source_dict in links_dict.items():
             destination = os.path.expandvars(destination)
             relative = defaults.get("relative", False)
             canonical_path = defaults.get("canonicalize-path", True)
-            force = defaults.get("force", False)
-            relink = defaults.get("relink", False)
-            create = defaults.get("create", False)
+            force_flag = defaults.get("force", False)
+            relink_flag = defaults.get("relink", False)
+            create_dir_flag = defaults.get("create", False)
             use_glob = defaults.get("glob", False)
-            test = defaults.get("if", None)
+            shell_command = defaults.get("if", None)
             ignore_missing = defaults.get("ignore-missing", False)
-            if isinstance(source, dict):
+            if isinstance(source_dict, dict):
                 # extended config
-                test = source.get("if", test)
-                relative = source.get("relative", relative)
-                canonical_path = source.get("canonicalize-path", canonical_path)
-                force = source.get("force", force)
-                relink = source.get("relink", relink)
-                create = source.get("create", create)
-                use_glob = source.get("glob", use_glob)
-                ignore_missing = source.get("ignore-missing", ignore_missing)
-                path = self._default_source(destination, source.get("path"))
+                shell_command = source_dict.get("if", shell_command)
+                relative = source_dict.get("relative", relative)
+                canonical_path = source_dict.get("canonicalize-path", canonical_path)
+                force_flag = source_dict.get("force", force_flag)
+                relink_flag = source_dict.get("relink", relink_flag)
+                create_dir_flag = source_dict.get("create", create_dir_flag)
+                use_glob = source_dict.get("glob", use_glob)
+                ignore_missing = source_dict.get("ignore-missing", ignore_missing)
+                path = self._default_source(destination, source_dict.get("path"))
             else:
-                path = self._default_source(destination, source)
-            if test is not None and not self._test_success(test):
+                path = self._default_source(destination, source_dict)
+            if shell_command is not None and not self._test_success(shell_command):
                 self._log.lowinfo("Skipping %s" % destination)
                 continue
             path = os.path.expandvars(os.path.expanduser(path))
@@ -70,10 +70,10 @@ class Link(dotbot.Plugin):
                     continue
                 elif glob_star_loc == -1 and len(glob_results) == 1:
                     # perform a normal link operation
-                    if create:
+                    if create_dir_flag:
                         success &= self._create(destination)
-                    if force or relink:
-                        success &= self._delete(path, destination, relative, canonical_path, force)
+                    if force_flag or relink_flag:
+                        success &= self._delete(path, destination, relative, canonical_path, force_flag)
                     success &= self._link(path, destination, relative, canonical_path, ignore_missing)
                 else:
                     self._log.lowinfo("Globs from '" + path + "': " + str(glob_results))
@@ -81,17 +81,17 @@ class Link(dotbot.Plugin):
                     for glob_full_item in glob_results:
                         glob_item = glob_full_item[len(glob_base) :]
                         glob_link_destination = os.path.join(destination, glob_item)
-                        if create:
+                        if create_dir_flag:
                             success &= self._create(glob_link_destination)
-                        if force or relink:
+                        if force_flag or relink_flag:
                             success &= self._delete(
-                                glob_full_item, glob_link_destination, relative, canonical_path, force
+                                glob_full_item, glob_link_destination, relative, canonical_path, force_flag
                             )
                         success &= self._link(
                             glob_full_item, glob_link_destination, relative, canonical_path, ignore_missing
                         )
             else:
-                if create:
+                if create_dir_flag:
                     success &= self._create(destination)
                 if not ignore_missing and not self._exists(os.path.join(self._context.base_directory(), path)):
                     # we seemingly check this twice (here and in _link) because
@@ -101,8 +101,8 @@ class Link(dotbot.Plugin):
                     success = False
                     self._log.warning("Nonexistent source %s -> %s" % (destination, path))
                     continue
-                if force or relink:
-                    success &= self._delete(path, destination, relative, canonical_path, force)
+                if force_flag or relink_flag:
+                    success &= self._delete(path, destination, relative, canonical_path, force_flag)
                 success &= self._link(path, destination, relative, canonical_path, ignore_missing)
         if success:
             self._log.info("All links have been set up")
