@@ -243,6 +243,12 @@ class Link(dotbot.Plugin):
         destination = os.path.expanduser(target_path_to_link_at)
         base_directory = self._context.base_directory(canonical_path=canonical_path)
         absolute_source = os.path.join(base_directory, dotfile_source)
+        # Check source directory exists unless we ignore missing
+        if ignore_missing is False and self._exists(absolute_source) is False:
+            self._log.warning("Nonexistent source %s <-> %s" % (
+                target_path_to_link_at, dotfile_source))
+            return success_flag
+
         if relative_path:
             dotfile_source = self._relative_path(absolute_source, destination)
         else:
@@ -252,6 +258,8 @@ class Link(dotbot.Plugin):
         target_file_is_link: bool = self._is_link(target_path_to_link_at)
         # get the file/ folder the symlink (located at the target path) is pointed to
         symlink_dest_at_target_path: str = self._get_link_destination(target_path_to_link_at)
+
+
         if target_path_exists is False:
             # target path doesn't exist already/ contains broken symlink
             if target_file_is_link and symlink_dest_at_target_path != dotfile_source:
@@ -259,7 +267,7 @@ class Link(dotbot.Plugin):
             # we need to use absolute_source below because our cwd is the dotfiles
             # directory, and if source is relative, it will be relative to the
             # destination directory
-            elif ignore_missing or self._exists(absolute_source):
+            else:
                 try:
                     os.symlink(dotfile_source, destination)
                 except OSError:
@@ -272,10 +280,6 @@ class Link(dotbot.Plugin):
                 else:
                     self._log.lowinfo("Creating link %s -> %s" % (target_path_to_link_at, dotfile_source))
                     success_flag = True
-
-            else:  # source file does not exist
-                self._log.warning("Nonexistent source %s <-> %s" % (
-                target_path_to_link_at, dotfile_source))
 
                 return success_flag
         else:  # target path does already exist
