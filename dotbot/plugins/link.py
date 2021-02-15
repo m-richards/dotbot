@@ -38,8 +38,8 @@ class Link(dotbot.Plugin):
     def _process_links(self, links_dict):
         # print("symlinking\n\t", links)
         success = True
-        (relative, canonical_path, force_flag, relink_flag,
-         create_dir_flag, use_glob, shell_command, ignore_missing) = self._get_default_flags()
+        (relative_default, canonical_path_default, force_flag_default, relink_flag_default,
+         create_dir_flag_default, use_glob_default, shell_command_default, ignore_missing_default) = self._get_default_flags()
 
         # defaults = self._context.defaults().get("link", {})
         for destination, source_dict in links_dict.items():
@@ -54,17 +54,20 @@ class Link(dotbot.Plugin):
             # ignore_missing = defaults.get("ignore-missing", False)
             if isinstance(source_dict, dict):
                 # extended config
-                shell_command = source_dict.get("if", shell_command)
-                relative = source_dict.get("relative", relative)
-                canonical_path = source_dict.get("canonicalize-path", canonical_path)
-                force_flag = source_dict.get("force", force_flag)
-                relink_flag = source_dict.get("relink", relink_flag)
-                create_dir_flag = source_dict.get("create", create_dir_flag)
-                use_glob = source_dict.get("glob", use_glob)
-                ignore_missing = source_dict.get("ignore-missing", ignore_missing)
+                shell_command = source_dict.get("if", shell_command_default)
+                relative = source_dict.get("relative", relative_default)
+                canonical_path = source_dict.get("canonicalize-path", canonical_path_default)
+                force_flag = source_dict.get("force", force_flag_default)
+                relink_flag = source_dict.get("relink", relink_flag_default)
+                create_dir_flag = source_dict.get("create", create_dir_flag_default)
+                use_glob = source_dict.get("glob", use_glob_default)
+                ignore_missing = source_dict.get("ignore-missing", ignore_missing_default)
                 path = self._default_source(destination, source_dict.get("path"))
             else:
                 path = self._default_source(destination, source_dict)
+                (shell_command, relative, canonical_path, force_flag, relink_flag,
+                create_dir_flag, use_glob, ignore_missing) = (shell_command_default, relative_default, canonical_path_default, force_flag_default, relink_flag_default,
+                create_dir_flag_default, use_glob_default, ignore_missing_default)
             if shell_command is not None and not self._test_success(shell_command):
                 self._log.lowinfo("Skipping %s" % destination)
                 continue
