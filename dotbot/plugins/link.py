@@ -285,10 +285,9 @@ class Link(dotbot.Plugin):
             self._log.warning("Incorrect link %s -> %s" % (target_path_to_link_at, symlink_dest_at_target_path))
         # again, we use absolute_source to check for existence
         elif not self._exists(absolute_source):
-            if target_file_is_link:
-                self._log.warning("Nonexistent source %s -> %s" % (target_path_to_link_at, dotfile_source))
-            else:
-                self._log.warning("Nonexistent source for %s : %s" % (target_path_to_link_at, dotfile_source))
+            self._log.warning("Nonexistent source %s <-> %s" % (
+                target_path_to_link_at, dotfile_source))
+            return success_flag
         else:
             self._log.lowinfo("Link exists %s -> %s" % (target_path_to_link_at, dotfile_source))
             success_flag = True
