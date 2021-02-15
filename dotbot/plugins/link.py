@@ -273,13 +273,9 @@ class Link(dotbot.Plugin):
                     self._log.lowinfo("Creating link %s -> %s" % (target_path_to_link_at, dotfile_source))
                     success_flag = True
 
-            else:  # temp ugly block
-                if target_file_is_link:
-                    self._log.warning("Nonexistent source %s -> %s" % (
-                    target_path_to_link_at, dotfile_source))
-                else:
-                    self._log.warning("Nonexistent source for %s : %s" % (
-                    target_path_to_link_at, dotfile_source))
+            else:  # source file does not exist
+                self._log.warning("Nonexistent source %s <-> %s" % (
+                target_path_to_link_at, dotfile_source))
 
                 return success_flag
 
