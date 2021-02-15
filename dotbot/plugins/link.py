@@ -21,20 +21,37 @@ class Link(dotbot.Plugin):
             raise ValueError("Link cannot handle directive %s" % directive)
         return self._process_links(data)
 
+    def _get_default_flags(self):
+        """Get flags for process links from default file."""
+        defaults = self._context.defaults().get("link", {})
+        relative = defaults.get("relative", False)
+        canonical_path = defaults.get("canonicalize-path", True)
+        force = defaults.get("force", False)
+        relink = defaults.get("relink", False)
+        create = defaults.get("create", False)
+        use_glob = defaults.get("glob", False)
+        test = defaults.get("if", None)
+        ignore_missing = defaults.get("ignore-missing", False)
+        return relative, canonical_path, force, relink, create, use_glob, test, ignore_missing
+
+
     def _process_links(self, links_dict):
         # print("symlinking\n\t", links)
         success = True
-        defaults = self._context.defaults().get("link", {})
+        (relative, canonical_path, force_flag, relink_flag,
+         create_dir_flag, use_glob, shell_command, ignore_missing) = self._get_default_flags()
+
+        # defaults = self._context.defaults().get("link", {})
         for destination, source_dict in links_dict.items():
             destination = os.path.expandvars(destination)
-            relative = defaults.get("relative", False)
-            canonical_path = defaults.get("canonicalize-path", True)
-            force_flag = defaults.get("force", False)
-            relink_flag = defaults.get("relink", False)
-            create_dir_flag = defaults.get("create", False)
-            use_glob = defaults.get("glob", False)
-            shell_command = defaults.get("if", None)
-            ignore_missing = defaults.get("ignore-missing", False)
+            # relative = defaults.get("relative", False)
+            # canonical_path = defaults.get("canonicalize-path", True)
+            # force_flag = defaults.get("force", False)
+            # relink_flag = defaults.get("relink", False)
+            # create_dir_flag = defaults.get("create", False)
+            # use_glob = defaults.get("glob", False)
+            # shell_command = defaults.get("if", None)
+            # ignore_missing = defaults.get("ignore-missing", False)
             if isinstance(source_dict, dict):
                 # extended config
                 shell_command = source_dict.get("if", shell_command)
