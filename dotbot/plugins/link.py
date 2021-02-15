@@ -104,10 +104,12 @@ class Link(dotbot.Plugin):
                         success &= self._link(
                             glob_full_item, glob_link_destination, relative, canonical_path, ignore_missing
                         )
-            else:
+            else:  # not using glob:
                 if create_dir_flag:
                     success &= self._create_dir(destination)
-                if not ignore_missing and not self._exists(os.path.join(self._context.base_directory(), path)):
+                if ignore_missing is False and self._exists(
+                    os.path.join(self._context.base_directory(), path)
+                ) is False:
                     # we seemingly check this twice (here and in _link) because
                     # if the file doesn't exist and force is True, we don't
                     # want to remove the original (this is tested by
@@ -248,28 +250,31 @@ class Link(dotbot.Plugin):
 
         target_path_exists: bool = self._exists(target_path_to_link_at)
         target_file_is_link: bool = self._is_link(target_path_to_link_at)
+        # get the file/ folder the symlink (located at the target path) is pointed to
         symlink_dest_at_target_path: str = self._get_link_destination(target_path_to_link_at)
-        if not target_path_exists and target_file_is_link and symlink_dest_at_target_path != dotfile_source:
-            self._log.warning("Invalid link %s -> %s" % (target_path_to_link_at, symlink_dest_at_target_path))
-        # we need to use absolute_source below because our cwd is the dotfiles
-        # directory, and if source is relative, it will be relative to the
-        # destination directory
-        elif not target_path_exists and (ignore_missing or self._exists(absolute_source)):
-            try:
-                os.symlink(dotfile_source, destination)
-            except OSError:
-                self._log.warning("Linking failed %s -> %s" % (target_path_to_link_at, dotfile_source))
-            except Exception as e:
-                print(
-                    f"SYMLINK FAILED with arguments os.symlink({dotfile_source}, {destination})",
-                )
-                raise e
-            else:
-                self._log.lowinfo("Creating link %s -> %s" % (target_path_to_link_at, dotfile_source))
-                success_flag = True
-        elif target_path_exists and not target_file_is_link:
-            self._log.warning("%s already exists but is a regular file or directory" % target_path_to_link_at)
-        elif target_file_is_link and symlink_dest_at_target_path != dotfile_source:
+        if target_path_exists is False:
+            if target_file_is_link and symlink_dest_at_target_path != dotfile_source:
+                self._log.warning("Invalid link %s -> %s" % (target_path_to_link_at, symlink_dest_at_target_path))
+            # we need to use absolute_source below because our cwd is the dotfiles
+            # directory, and if source is relative, it will be relative to the
+            # destination directory
+            elif ignore_missing or self._exists(absolute_source):
+                try:
+                    os.symlink(dotfile_source, destination)
+                except OSError:
+                    self._log.warning("Linking failed %s -> %s" % (target_path_to_link_at, dotfile_source))
+                except Exception as e:
+                    print(
+                        f"SYMLINK FAILED with arguments os.symlink({dotfile_source}, {destination})",
+                    )
+                    raise e
+                else:
+                    self._log.lowinfo("Creating link %s -> %s" % (target_path_to_link_at, dotfile_source))
+                    success_flag = True
+        else:  # target path does exist
+            if target_file_is_link is False:
+                self._log.warning("%s already exists but is a regular file or directory" % target_path_to_link_at)
+        if target_file_is_link and symlink_dest_at_target_path != dotfile_source:
             self._log.warning("Incorrect link %s -> %s" % (target_path_to_link_at, symlink_dest_at_target_path))
         # again, we use absolute_source to check for existence
         elif not self._exists(absolute_source):
