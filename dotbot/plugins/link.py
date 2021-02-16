@@ -259,23 +259,29 @@ class Link(dotbot.Plugin):
         # get the file/ folder the symlink (located at the target path) is pointed to
         symlink_dest_at_target_path: str = self._get_link_destination(target_path_to_link_at)
 
-        symlink_targets_incorrect_source = symlink_dest_at_target_path != dotfile_source
         # Check case of links are present but incorrect
-        if target_file_is_link and symlink_targets_incorrect_source:
+        if target_file_is_link and (symlink_dest_at_target_path != dotfile_source):
             if target_path_exists:
                 self._log.warning("Incorrect link (link exists but target is incorrect) %s -> %s"
                                   % (target_path_to_link_at, symlink_dest_at_target_path))
             else:
+                # Symlink is broken or dangling
                 self._log.warning("Symlink Invalid %s -> %s" % (target_path_to_link_at,
                                                             symlink_dest_at_target_path))
             return success_flag
 
-        if target_path_exists is False:
-            # target path doesn't exist already/ contains broken symlink
-
-            # we need to use absolute_source below because our cwd is the dotfiles
-            # directory, and if source is relative, it will be relative to the
-            # destination directory
+        if target_path_exists:  # file/ folder we want to put symlink in already exists
+            if target_file_is_link:  # already checked if link pointed to wrong location,
+                # so if it's a link we know it's correct
+                self._log.lowinfo("Link exists %s -> %s" % (target_path_to_link_at, dotfile_source))
+                success_flag = True
+                return success_flag
+            else:  # Not a link
+                self._log.warning(
+                    "%s already exists but is a regular file or directory" % target_path_to_link_at)
+                return success_flag
+        else:
+            # target path doesn't exist already, so we try to create the symlink
             try:
                 os.symlink(dotfile_source, destination)
             except OSError:
@@ -290,13 +296,4 @@ class Link(dotbot.Plugin):
                 success_flag = True
 
             return success_flag
-        else:  # target path does already exist
-            if target_file_is_link is False:
-                self._log.warning(
-                    "%s already exists but is a regular file or directory" % target_path_to_link_at)
-                return success_flag
 
-            else: # target correct source
-                self._log.lowinfo("Link exists %s -> %s" % (target_path_to_link_at, dotfile_source))
-                success_flag = True
-        return success_flag
