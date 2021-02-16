@@ -268,6 +268,7 @@ class Link(dotbot.Plugin):
             else:
                 self._log.warning("Symlink Invalid %s -> %s" % (target_path_to_link_at,
                                                             symlink_dest_at_target_path))
+            return success_flag
 
         if target_path_exists is False:
             # target path doesn't exist already/ contains broken symlink
