@@ -260,37 +260,42 @@ class Link(dotbot.Plugin):
         symlink_dest_at_target_path: str = self._get_link_destination(target_path_to_link_at)
 
         symlink_targets_incorrect_source = symlink_dest_at_target_path != dotfile_source
+        # Check case of links are present but incorrect
+        if target_file_is_link and symlink_targets_incorrect_source:
+            if target_path_exists:
+                self._log.warning("Incorrect link (link exists but target is incorrect) %s -> %s"
+                                  % (target_path_to_link_at, symlink_dest_at_target_path))
+            else:
+                self._log.warning("Symlink Invalid %s -> %s" % (target_path_to_link_at,
+                                                            symlink_dest_at_target_path))
+
         if target_path_exists is False:
             # target path doesn't exist already/ contains broken symlink
-            if target_file_is_link and symlink_targets_incorrect_source:
-                self._log.warning("Invalid link %s -> %s" % (target_path_to_link_at, symlink_dest_at_target_path))
+
             # we need to use absolute_source below because our cwd is the dotfiles
             # directory, and if source is relative, it will be relative to the
             # destination directory
+            try:
+                os.symlink(dotfile_source, destination)
+            except OSError:
+                self._log.warning("Linking failed %s -> %s" % (target_path_to_link_at, dotfile_source))
+            except Exception as e:
+                print(
+                    f"SYMLINK FAILED with arguments os.symlink({dotfile_source}, {destination})",
+                )
+                raise e
             else:
-                try:
-                    os.symlink(dotfile_source, destination)
-                except OSError:
-                    self._log.warning("Linking failed %s -> %s" % (target_path_to_link_at, dotfile_source))
-                except Exception as e:
-                    print(
-                        f"SYMLINK FAILED with arguments os.symlink({dotfile_source}, {destination})",
-                    )
-                    raise e
-                else:
-                    self._log.lowinfo("Creating link %s -> %s" % (target_path_to_link_at, dotfile_source))
-                    success_flag = True
+                self._log.lowinfo("Creating link %s -> %s" % (target_path_to_link_at, dotfile_source))
+                success_flag = True
 
-                return success_flag
+            return success_flag
         else:  # target path does already exist
             if target_file_is_link is False:
                 self._log.warning(
                     "%s already exists but is a regular file or directory" % target_path_to_link_at)
                 return success_flag
-            elif symlink_targets_incorrect_source:
-                self._log.warning("Incorrect link %s -> %s" % (
-                target_path_to_link_at, symlink_dest_at_target_path))
-            else:
+
+            else: # target correct source
                 self._log.lowinfo("Link exists %s -> %s" % (target_path_to_link_at, dotfile_source))
                 success_flag = True
         return success_flag
