@@ -1,10 +1,12 @@
 import os
 import glob
 import shutil
+
 import dotbot
 import dotbot.util
-import subprocess
 import textwrap
+
+from dotbot.util.common import on_permitted_os
 
 
 class Link(dotbot.Plugin):
@@ -34,7 +36,9 @@ class Link(dotbot.Plugin):
         test = defaults.get("if", None)
         ignore_missing = defaults.get("ignore-missing", False)
         exclude_paths = defaults.get('exclude', [])
-        return relative, canonical_path, force, relink, create, use_glob, test, ignore_missing, exclude_paths
+        os_constraint = defaults.get("os-constraint", None)
+        return relative, canonical_path, force, relink, create, use_glob, test, ignore_missing, \
+               exclude_paths, os_constraint
 
 
     def _process_links(self, links_dict):
@@ -42,12 +46,13 @@ class Link(dotbot.Plugin):
         success = True
         (relative_default, canonical_path_default, force_flag_default, relink_flag_default,
          create_dir_flag_default, use_glob_default, shell_command_default,
-         ignore_missing_default, exclude_paths_default) = self._get_default_flags()
+         ignore_missing_default, exclude_paths_default, os_constraint_default) = \
+            self._get_default_flags()
 
         for destination, source_dict in links_dict.items():
             destination = os.path.expandvars(destination)
 
-            if isinstance(source_dict, dict):
+            if isinstance(source_dict, dict):  # user supplied a "dict" of keys in addition to path
                 path = self._default_source(destination, source_dict.get("path"))
                 # extended config
                 shell_command = source_dict.get("if", shell_command_default)
@@ -61,8 +66,13 @@ class Link(dotbot.Plugin):
                 use_glob = source_dict.get("glob", use_glob_default)
                 ignore_missing = source_dict.get("ignore-missing", ignore_missing_default)
                 exclude_paths = source_dict.get("exclude", exclude_paths_default)
+                os_constraint = source_dict.get("os-constraint", os_constraint_default)
+                if on_permitted_os(os_constraint, log=None) is False:
+                    expanded_dest = os.path.normpath(os.path.expanduser(destination))
+                    self._log.lowinfo(f"Skipping link {expanded_dest} ({os_constraint} only)")
+                    continue
 
-            else:
+            else:  # user only supplied a path
                 path = self._default_source(destination, source_dict)
 
                 (shell_command, relative, canonical_path, force_flag, relink_flag,
@@ -253,8 +263,9 @@ class Link(dotbot.Plugin):
     def _link(self, dotfile_source, target_path_to_link_at, relative_path, canonical_path, ignore_missing):
         '''
         Links link_name to source.
-        :param target_path_to_link_at is the file path where we are putting a symlink back to
-        dotfile_source
+        :param target_path_to_link_at is the file path where we are putting a symlink
+            (where the file originally lived)
+        :param dotfile_source - source file in dotfiles directory, which file should symlink to
 
         Returns true if successfully linked files.
         '''
@@ -276,29 +287,39 @@ class Link(dotbot.Plugin):
 
         target_path_exists: bool = self._exists(target_path_to_link_at)
         target_file_is_link: bool = self._is_link(target_path_to_link_at)
+
         # get the file/ folder the symlink (located at the target path) is pointed to
         symlink_dest_at_target_path: str = self._get_link_destination(target_path_to_link_at)
 
+        # Expanded, os style paths for reporting/ error checking
+        symlink_loc_clean = os.path.normpath(os.path.expanduser(target_path_to_link_at))
+        dotfile_source_expanded = os.path.expanduser(dotfile_source)
+
         # Check case of links are present but incorrect
         if target_file_is_link and (symlink_dest_at_target_path != dotfile_source):
+            symlink_dest_clean = os.path.abspath(symlink_dest_at_target_path)
             if target_path_exists:
-                self._log.warning("Incorrect link (link exists but target is incorrect) %s -> %s"
-                                  % (target_path_to_link_at, symlink_dest_at_target_path))
+                self._log.warning("Incorrect link (link exists but target is incorrect):\n\t "
+                                  f"{symlink_loc_clean} -> {symlink_dest_clean},\n\t"
+                                  f"Expected {symlink_dest_clean}, found "
+                                  f"{dotfile_source_expanded}"
+                                 )
                 print("Link found:", symlink_dest_at_target_path, "expected", dotfile_source)
             else:
                 # Symlink is broken or dangling
-                self._log.warning("Symlink Invalid %s -> %s" % (target_path_to_link_at, symlink_dest_at_target_path))
+                self._log.warning(f"Symlink Invalid:\n\t {symlink_loc_clean}"
+                                  f"\n\t -> {symlink_dest_clean}")
             return success_flag
 
         if target_path_exists:  # file/ folder we want to put symlink in already exists
             if target_file_is_link:  # already checked if link pointed to wrong location,
                 # so if it's a link we know it's correct
-                self._log.lowinfo("Link exists %s -> %s" % (target_path_to_link_at, dotfile_source))
+                self._log.lowinfo("Link exists %s -> %s" % (symlink_loc_clean, dotfile_source_expanded))
                 success_flag = True
                 return success_flag
             else:  # Not a link
                 self._log.warning(
-                    "%s already exists but is a regular file or directory" % target_path_to_link_at)
+                    "%s already exists but is a regular file or directory" % symlink_loc_clean)
                 return success_flag
         else:
             # target path doesn't exist already, so we try to create the symlink
@@ -307,7 +328,8 @@ class Link(dotbot.Plugin):
                 os.symlink(dotfile_source, destination)
             except OSError as e:
                 msg = textwrap.fill(
-                    f"Linking failed {target_path_to_link_at} -> {dotfile_source}\n ({e})", width=80, subsequent_indent="    ")
+                    f"Linking failed {symlink_loc_clean} -> {dotfile_source_expanded}\n ({e})",
+                    width=80, subsequent_indent="    ")
 
                 self._log.warning(msg)
             except Exception as e:
@@ -316,7 +338,7 @@ class Link(dotbot.Plugin):
                 )
                 raise e
             else:
-                self._log.lowinfo("Creating link %s -> %s" % (target_path_to_link_at, dotfile_source))
+                self._log.lowinfo("Creating link %s -> %s" % (symlink_loc_clean, dotfile_source_expanded))
                 success_flag = True
 
             return success_flag
