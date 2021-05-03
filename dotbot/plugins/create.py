@@ -1,6 +1,7 @@
 import os
 import dotbot
 from ..util.common import expand_path, on_permitted_os
+from typing import Union
 
 
 class Create(dotbot.Plugin):
@@ -18,33 +19,34 @@ class Create(dotbot.Plugin):
             raise ValueError('Create cannot handle directive %s' % directive)
         return self._process_paths(data)
 
-    def _process_paths(self, paths:dict):
+    def _process_paths(self, paths:Union[dict, list]):
+        """Paths can be a list or a dict depending on yaml format.
+        Tread list format as soft deprecated and use original logic without os-constraint.
+        """
+        if isinstance(paths, list):
+            self._log.warning("Create from list syntax is soft deprecated, should use dict "
+            "syntax with keys & null values instead for up to date behaviour.")
+            # basically logic is confusing, don't need to have two ways to do the same thing,
         success = True
         defaults = self._context.defaults().get('create', {})
-        for path in paths:
-            if isinstance(path, dict):  # path is key, with additional args
-                if len(path) > 1:
-                    raise ValueError(f"Unexpected dict stuff: {path}")
-                path, path_settings = list(path.items())[0]
-                # print(path, path_settings)
-                if isinstance(path_settings, dict) is False:
-                    raise ValueError(f"Unexpected path setttings {path}: {path_settings}")
-                if "os-constraint" in path_settings:
-                    os_constraint = path_settings["os-constraint"]
+        for key in paths:  # keys or indexes in list
+            if isinstance(key, dict):
+                raise TypeError("Create Mode options not supported unless dict based constructor "
+                    "is used (same as default dotbot).\nSwap to yaml dict syntax (with ':' line "
+                    "ends and no '-' prefix).")
+            path_expanded = expand_path(key)
+            mode = defaults.get('mode', 0o777)  # same as the default for os.makedirs
+            os_constraint = defaults.get('os-constraint', None)
+            if isinstance(paths, dict):
+                options = paths[key]
+                if options is not None:
+                    mode = options.get('mode', mode)
+                    os_constraint = options.get('os-constraint', os_constraint)
                     if on_permitted_os(os_constraint) is False:
-                        self._log.lowinfo(f"Path skipped {expand_path(path)} ({os_constraint} "
+                        self._log.lowinfo(f"Path skipped {path_expanded} ({os_constraint} "
                                           f"only)")
                         continue  # skip illegal os
-                else:
-                    raise KeyError(f"Unexpected path creation setting {path_settings}, only"
-                                   f"supported key is 'os-constraint'")
-            path = os.path.normpath(os.path.expandvars(os.path.expanduser(path)))
-            mode = defaults.get('mode', 0o777)  # same as the default for os.makedirs
-            if isinstance(paths, dict):
-                options = paths[path]
-                if options:
-                    mode = options.get('mode', mode)
-            success &= self._create(path, mode)
+            success &= self._create(path_expanded, mode)
         if success:
             self._log.info('All paths have been set up')
         else:

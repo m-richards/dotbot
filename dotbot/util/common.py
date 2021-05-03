@@ -1,6 +1,7 @@
 import os
 import subprocess
 import platform
+from typing import Optional
 
 from dotbot.messenger import Messenger
 
@@ -43,7 +44,9 @@ def expand_path(path, abs=False):
         return path
 
 
-def on_permitted_os(os_constraint, log: Messenger = None) -> bool:
+def on_permitted_os(os_constraint:Optional[str], log: Messenger = None) -> bool:
+    if os_constraint is None:
+        return True # any os is fine
     current_os = platform.system().lower()
     if isinstance(os_constraint, str) and os_constraint.lower() == "all":
         os_constraint = None
