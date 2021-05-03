@@ -26,7 +26,7 @@ class Create(dotbot.Plugin):
                 if len(path) > 1:
                     raise ValueError(f"Unexpected dict stuff: {path}")
                 path, path_settings = list(path.items())[0]
-                print(path, path_settings)
+                # print(path, path_settings)
                 if isinstance(path_settings, dict) is False:
                     raise ValueError(f"Unexpected path setttings {path}: {path_settings}")
                 if "os-constraint" in path_settings:
@@ -38,7 +38,7 @@ class Create(dotbot.Plugin):
                 else:
                     raise KeyError(f"Unexpected path creation setting {path_settings}, only"
                                    f"supported key is 'os-constraint'")
-
+            path = os.path.normpath(os.path.expandvars(os.path.expanduser(path)))
             mode = defaults.get('mode', 0o777)  # same as the default for os.makedirs
             if isinstance(paths, dict):
                 options = paths[path]
@@ -65,8 +65,8 @@ class Create(dotbot.Plugin):
             try:
                 self._log.lowinfo('Creating path %s' % path)
                 os.makedirs(path, mode)
-            except OSError:
-                self._log.warning('Failed to create path %s' % path)
+            except OSError as e:
+                self._log.warning(f'Failed to create path {path} ({e})')
                 success = False
         else:
             self._log.lowinfo('Path exists %s' % path)
