@@ -56,5 +56,4 @@ def on_permitted_os(os_constraint, log: Messenger = None) -> bool:
             raise KeyError("Unknown/ unsupported operating system constraint "
                            f"supplied: {os_constraint}")
         # Return false if we are on the constrained os
-        print("on, constraint", current_os, os_constraint)
         return current_os == os_constraint

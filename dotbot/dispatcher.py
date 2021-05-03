@@ -1,6 +1,6 @@
 import os
 from argparse import Namespace
-from pprint import pprint
+# from pprint import pprint
 
 from .plugin import Plugin
 from .messenger import Messenger
@@ -24,7 +24,7 @@ class Dispatcher(object):
         self._context = Context(path, options)
 
     def dispatch(self, tasks):
-        pprint(tasks)
+        # pprint(tasks)
         success = True
         for task in tasks:
             for action in task.keys():
