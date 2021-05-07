@@ -9,7 +9,8 @@ from .messenger import Level
 from .util import module
 
 import dotbot
-import yaml
+import os
+import subprocess
 
 def add_options(parser):
     parser.add_argument('-Q', '--super-quiet', action='store_true',
@@ -57,7 +58,14 @@ def main(additional_args=None):
             print("got explicit arguments")
             options = parser.parse_args(additional_args)
         if options.version:
-            print('Dotbot version %s (yaml: %s)' % (dotbot.__version__, yaml.__version__))
+            try:
+                with open(os.devnull) as devnull:
+                    git_hash = subprocess.check_output(['git', 'rev-parse', 'HEAD'],
+                            cwd=os.path.dirname(os.path.abspath(__file__)), stderr=devnull)
+                hash_msg = ' (git %s)' % git_hash[:10]
+            except (OSError, subprocess.CalledProcessError):
+                hash_msg = ''
+            print('Dotbot version %s%s' % (dotbot.__version__, hash_msg))
             exit(0)
         if options.super_quiet:
             log.set_level(Level.WARNING)
